@@ -10,4 +10,4 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "quality-movies-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "2e4f56d4-7da4-46fc-929f-c238ce562163"
