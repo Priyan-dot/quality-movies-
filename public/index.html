@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>Quality Movies</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1120;--panel:#142137;--muted:#aebbd0;--accent:#f04468;--line:#293950}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f8fafc;font-family:system-ui,Arial,sans-serif}
+header{padding:16px 5%;background:#111c30;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.brand{font-weight:850;font-size:20px}.brand span{color:var(--accent)}main{width:min(1050px,92%);margin:28px auto 60px}
+.hero{padding:35px 24px;border-radius:20px;background:linear-gradient(135deg,#293f60,#111827);border:1px solid #34445d}
+h1{font-size:clamp(30px,6vw,46px);margin:8px 0}.muted{color:var(--muted);line-height:1.6}
+input{width:100%;padding:14px;border-radius:10px;border:1px solid #465873;background:#0d1728;color:white;font-size:16px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:15px;margin-top:16px}
+.card,.detail{background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden}
+.poster{height:145px;display:grid;place-items:center;background:linear-gradient(135deg,#2a4263,#1b2940);font-size:46px}
+.body{padding:15px}.meta{font-size:12px;color:var(--muted)}h3{margin:8px 0}.desc{font-size:13px;color:var(--muted);min-height:38px}
+.btn{display:inline-block;margin-top:12px;padding:11px 15px;background:var(--accent);border-radius:9px;color:white;text-decoration:none;font-weight:700;border:0;cursor:pointer}
+.detail{padding:24px;margin-top:20px}.hidden{display:none!important}footer{text-align:center;color:#8290a6;padding:30px;font-size:12px}
+@media(max-width:520px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.poster{height:110px}.body{padding:11px}}
+</style></head>
+<body>
+<header><div class="brand">QUALITY <span>MOVIES</span></div><small>CONTENT LIBRARY</small></header>
+<main>
+<section class="hero"><small>WELCOME</small><h1>Your video library,<br>all in one place.</h1>
+<p class="muted">Browse movies and series shared by Quality Movies.</p>
+<input id="search" placeholder="Search movies or series..." aria-label="Search titles"></section>
+<section id="catalog"><h2>Available content</h2><div id="items" class="grid"></div></section>
+<section id="detail" class="detail hidden"></section>
+</main><footer>QUALITY MOVIES · Content shared with permission</footer>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let videos=[];
+function driveOK(s){try{let u=new URL(s);return u.protocol==="https:"&&["drive.google.com","docs.google.com"].includes(u.hostname)?u.href:null}catch{return null}}
+function render(){
+ const q=$("#search").value.toLowerCase();
+ const rows=videos.filter(v=>(v.title+" "+v.type).toLowerCase().includes(q));
+ $("#items").innerHTML=rows.length?rows.map(v=>`<article class="card"><div class="poster">${v.poster?`<img src="${esc(v.poster)}" alt="" style="width:100%;height:100%;object-fit:cover">`:(v.type==="Series"?"📺":"🎬")}</div><div class="body"><div class="meta">${esc(v.type)} · ${esc(v.year||"")}</div><h3>${esc(v.title)}</h3><div class="desc">${esc(v.description||"")}</div><a class="btn" href="?id=${encodeURIComponent(v.slug)}">View details</a></div></article>`).join(""):'<p class="muted">No titles found.</p>';
+}
+async function init(){
+ try{const r=await fetch("/api/videos");if(!r.ok)throw Error();videos=await r.json()}catch{videos=[]}
+ render();
+ const slug=new URLSearchParams(location.search).get("id");
+ if(slug){const v=videos.find(x=>x.slug===slug);$("#catalog").classList.add("hidden");$("#detail").classList.remove("hidden");
+ $("#detail").innerHTML=v?`<div class="meta">${esc(v.type)} · ${esc(v.year||"")}</div><h2>${esc(v.title)}</h2><p class="muted">${esc(v.description||"")}</p>${driveOK(v.drive)?`<a class="btn" target="_blank" rel="noopener noreferrer" href="${esc(driveOK(v.drive))}">Open Google Drive ↗</a>`:'<p class="muted">A valid Drive link has not been added.</p>'}<p class="muted">Access depends on the file owner's Google Drive permissions.</p><a href="/" style="color:#a9c9ff">← Back to library</a>`:'<h2>Title not found</h2><a href="/">Back</a>'}
+}
+$("#search").addEventListener("input",render);init();
+</script></body></html>

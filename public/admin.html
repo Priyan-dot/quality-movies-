@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quality Movies Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1120;color:#f8fafc;font-family:system-ui,Arial;padding:20px}
+main{max-width:760px;margin:25px auto}.panel{background:#142137;border:1px solid #293950;border-radius:16px;padding:22px;margin-bottom:18px}
+h1{margin-top:0}label{display:block;margin:13px 0 6px;color:#bdc9da;font-size:13px}
+input,textarea,select{width:100%;padding:12px;border:1px solid #40516b;border-radius:9px;background:#0d1728;color:white;font:inherit}
+textarea{min-height:80px}button{padding:11px 16px;border:0;border-radius:9px;background:#f04468;color:white;font-weight:700;cursor:pointer;margin:8px 8px 0 0}
+button.secondary{background:#31445f}button.danger{background:#a83249}.muted{color:#aebbd0}.item{padding:12px;border:1px solid #34445d;border-radius:10px;margin-top:10px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.hidden{display:none!important}.status{margin-top:12px;color:#f9a8b8;white-space:pre-wrap}
+</style></head><body><main>
+<h1>Quality Movies — Admin</h1><p class="muted">Add and manage only videos you own or are licensed to share.</p>
+<section id="login" class="panel"><h2>Admin login</h2><label>Admin password</label><input id="password" type="password" autocomplete="current-password"><button id="loginBtn">Login</button><div id="loginMsg" class="status"></div></section>
+<section id="app" class="hidden">
+<div class="panel"><h2 id="formTitle">Add content</h2><form id="videoForm">
+<input id="editId" type="hidden">
+<label>Title</label><input id="title" required maxlength="100" placeholder="Example: My Licensed Film">
+<label>URL slug (unique)</label><input id="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="my-licensed-film">
+<label>Type</label><select id="type"><option>Movie</option><option>Series</option></select>
+<label>Year / season</label><input id="year" maxlength="30" placeholder="2026">
+<label>Description</label><textarea id="description" maxlength="500" placeholder="Short description"></textarea>
+<label>Poster image URL (optional, HTTPS)</label><input id="poster" type="url" placeholder="https://example.com/poster.jpg">
+<label>Google Drive share URL</label><input id="drive" type="url" required placeholder="https://drive.google.com/file/d/FILE_ID/view">
+<button type="submit">Save content</button><button type="button" class="secondary" id="resetBtn">Clear form</button>
+</form><div id="formMsg" class="status"></div></div>
+<div class="panel"><h2>Content library</h2><div id="list"></div><button class="secondary" id="logoutBtn">Logout</button></div>
+</section></main>
+<script>
+const $=s=>document.querySelector(s);
+let records=[];
+async function api(path,opts={}){const r=await fetch(path,{...opts,headers:{"Content-Type":"application/json",...(opts.headers||{})}});const data=await r.json().catch(()=>({error:"Unexpected server response"}));if(!r.ok)throw Error(data.error||"Request failed");return data}
+function message(id,s){$(id).textContent=s}
+function showApp(){ $("#login").classList.add("hidden");$("#app").classList.remove("hidden");load()}
+async function load(){try{records=await api("/api/videos");$("#list").innerHTML=records.length?records.map(v=>`<div class="item"><span><b>${safe(v.title)}</b><br><small class="muted">${safe(v.type)} · ${safe(v.slug)}</small></span><span><button class="secondary" onclick="editItem('${v.id}')">Edit</button><button class="danger" onclick="deleteItem('${v.id}')">Delete</button></span></div>`).join(""):'<p class="muted">No content added yet.</p>'}catch(e){message("#formMsg",e.message)}}
+function safe(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+$("#loginBtn").onclick=async()=>{try{await api("/api/login",{method:"POST",body:JSON.stringify({password:$("#password").value})});message("#loginMsg","");showApp()}catch(e){message("#loginMsg",e.message)}};
+$("#videoForm").onsubmit=async e=>{e.preventDefault();const id=$("#editId").value;const payload={title:$("#title").value,slug:$("#slug").value,type:$("#type").value,year:$("#year").value,description:$("#description").value,poster:$("#poster").value,drive:$("#drive").value};try{await api(id?"/api/videos/"+id:"/api/videos",{method:id?"PUT":"POST",body:JSON.stringify(payload)});message("#formMsg","Saved successfully.");reset();load()}catch(err){message("#formMsg",err.message)}};
+function editItem(id){const v=records.find(x=>x.id===id);if(!v)return;$("#editId").value=v.id;for(const k of ["title","slug","type","year","description","poster","drive"])$("#"+k).value=v[k]||"";$("#formTitle").textContent="Edit content";window.scrollTo({top:0,behavior:"smooth"})}
+async function deleteItem(id){if(!confirm("Delete this entry?"))return;try{await api("/api/videos/"+id,{method:"DELETE"});load()}catch(e){alert(e.message)}}
+function reset(){$("#videoForm").reset();$("#editId").value="";$("#formTitle").textContent="Add content"}
+$("#resetBtn").onclick=reset;
+$("#logoutBtn").onclick=async()=>{await api("/api/logout",{method:"POST"}).catch(()=>{});location.reload()};
+(async()=>{try{await api("/api/me");showApp()}catch{}})();
+</script></body></html>
